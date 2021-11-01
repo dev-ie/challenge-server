@@ -1,0 +1,14 @@
+apiVersion: infinispan.org/v1
+kind: Infinispan
+metadata:
+  name: cache-service
+  labels:
+    app.kubernetes.io/part-of: developer-challenge
+    app.kubernetes.io/name: datagrid
+    app.kubernetes.io/instance: cache-service
+    app.kubernetes.io/component: cache
+spec:
+  expose:
+    type: Route
+  replicas: 1
+  

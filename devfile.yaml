@@ -1,0 +1,99 @@
+commands:
+- apply:
+    component: truststore-initcontainer
+  id: mount-truststore
+- exec:
+    commandLine: mvn -Dmaven.repo.local=/home/user/.m2/repository compile
+    component: tools
+    workingDir: $PROJECTS_ROOT
+  id: init-compile
+- exec:
+    commandLine: mvn -Dmaven.repo.local=/home/user/.m2/repository quarkus:dev -Dquarkus.http.host=0.0.0.0
+      -Djava.util.logging.manager=org.jboss.logmanager.LogManager
+    component: tools
+    group:
+      isDefault: true
+      kind: run
+    hotReloadCapable: true
+    workingDir: $PROJECTS_ROOT
+  id: dev-run
+- exec:
+    commandLine: mvn -Dmaven.repo.local=/home/user/.m2/repository quarkus:dev -Dquarkus.http.host=0.0.0.0
+      -Djava.util.logging.manager=org.jboss.logmanager.LogManager -Ddebug=${DEBUG_PORT}
+    component: tools
+    group:
+      isDefault: true
+      kind: debug
+    hotReloadCapable: true
+    workingDir: $PROJECTS_ROOT
+  id: dev-debug
+components:
+- container:
+    endpoints:
+    - name: 8080-http
+      targetPort: 8080
+    image: registry.access.redhat.com/ubi8/openjdk-11
+    memoryLimit: 512Mi
+    mountSources: true
+    volumeMounts:
+    - name: m2
+      path: /home/user/.m2
+    - name: truststore-volume
+      path: /mnt
+  name: tools
+- container:
+    image: >-
+      quay.io/murph83/truststore-initcontainer@sha256:b817ab95fbdda03049c6cd970ea481ac7672e9fd6dbbe96e3668a1599461a539
+    mountSources: false
+    command:
+      - /bin/bash
+    args:
+      - '-c'
+      - >-
+        csplit -z -f crt- $ca_bundle '/-----BEGIN CERTIFICATE-----/' '{*}'
+        && for file in crt-*; do keytool -import -noprompt -keystore
+        $truststore_jks -file $file -storepass password -alias
+        service-$file; done
+    env:
+      - name: ca_bundle
+        value: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+      - name: truststore_jks
+        value: /var/run/secrets/java.io/keystores/clientcerts
+    volumeMounts:
+      - name: truststore-volume
+        path: /var/run/secrets/java.io/keystores
+  name: truststore-initcontainer
+- name: truststore-volume
+  volume:
+    size: 1Gi
+- name: m2
+  volume:
+    size: 3Gi
+- kubernetes:
+    uri: kubernetes/odo-service-cache-service.yaml
+  name: cache-service
+events:
+  preStart:
+  - mount-truststore
+  postStart:
+  - init-compile
+metadata:
+  description: Quarkus with Java
+  displayName: Quarkus Java
+  icon: https://design.jboss.org/quarkus/logo/final/SVG/quarkus_icon_rgb_default.svg
+  language: java
+  name: challenge-server
+  projectType: quarkus
+  tags:
+  - Java
+  - Quarkus
+  version: 1.1.0
+  website: https://quarkus.io
+schemaVersion: 2.0.0
+starterProjects:
+- name: community
+  zip:
+    location: https://code.quarkus.io/d?e=io.quarkus%3Aquarkus-resteasy&e=io.quarkus%3Aquarkus-micrometer&e=io.quarkus%3Aquarkus-smallrye-health&e=io.quarkus%3Aquarkus-openshift&cn=devfile
+- name: redhat-product
+  zip:
+    location: https://code.quarkus.redhat.com/d?e=io.quarkus%3Aquarkus-resteasy&e=io.quarkus%3Aquarkus-smallrye-health&e=io.quarkus%3Aquarkus-openshift
