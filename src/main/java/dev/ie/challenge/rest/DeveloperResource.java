@@ -24,7 +24,11 @@ import org.eclipse.microprofile.openapi.annotations.media.Schema;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
 import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.Search;
+import org.infinispan.query.dsl.Query;
+import org.infinispan.query.dsl.QueryFactory;
 
+import dev.ie.challenge.model.ChallengeEntry;
 import dev.ie.challenge.model.Developer;
 import io.quarkus.infinispan.client.Remote;
 
@@ -35,6 +39,10 @@ public class DeveloperResource {
     @Inject
     @Remote("developers")
     RemoteCache<String, Developer> developerCache;
+    
+    @Inject
+    @Remote("entries")
+    RemoteCache<String, ChallengeEntry> entryCache;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)
@@ -63,7 +71,7 @@ public class DeveloperResource {
     @GET
     @Path("{id}")
     @Produces(MediaType.APPLICATION_JSON)
-    @Operation(operationId = "getDeveloperById", description = "Reads the developers resource for a developer matching the provided ID")
+    @Operation(operationId = "getDeveloperById", description = "Reads the developers resource for a developer matching the provided id")
     @APIResponse(responseCode = "200", description = "The developer matching the provided ID was found", content = @Content(schema = @Schema(implementation = Developer.class)))
     @APIResponse(responseCode = "404", description = "No developer matching the provided ID was found")
     public Response getDeveloperById(@PathParam("id") String id){
@@ -74,6 +82,26 @@ public class DeveloperResource {
         }
 
         return Response.ok(developer).build();
+    }
+
+    @GET
+    @Path("{id}/entries")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(operationId = "getChallengeEntriesByDeveloperId", description = "Reads the list of challenge entries associated with a particular developer id")
+    @APIResponse(responseCode = "200", description = "The developer matching the provided id was found", content = @Content(schema = @Schema(type = SchemaType.ARRAY, implementation = ChallengeEntry.class)))
+    @APIResponse(responseCode = "404", description = "No developer matching the provided id was found")
+    public Response getChallengeEntriesByDeveloperId(@PathParam("id") String developerId){
+
+        if (!developerCache.containsKey(developerId)){
+            return Response.status(Status.NOT_FOUND).build();
+        }
+
+        QueryFactory queryFactory = Search.getQueryFactory(entryCache);
+        Query<ChallengeEntry> query = queryFactory.create("from dev_ie.ChallengeEntry where developerId = :developerId");
+        query.setParameter("developerId", developerId);
+
+        List<ChallengeEntry> entries = query.execute().list();
+        return Response.ok(entries).build();
     }
     
 }

@@ -40,6 +40,8 @@ components:
       path: /home/user/.m2
     - name: truststore-volume
       path: /mnt
+    - name: infinispan-identities
+      path: /var/run/secrets/ie.dev
   name: tools
 - container:
     image: >-

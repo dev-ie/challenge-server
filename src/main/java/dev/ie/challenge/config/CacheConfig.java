@@ -16,6 +16,8 @@ public class CacheConfig {
 
     void onStart(@Observes StartupEvent ev){        
         cacheManager.administration().getOrCreateCache("developers", "example.PROTOBUF_DIST");
+        cacheManager.administration().getOrCreateCache("challenges", "example.PROTOBUF_DIST");
+        cacheManager.administration().getOrCreateCache("entries", "example.PROTOBUF_DIST");
     }
     
 }
